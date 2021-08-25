@@ -1,12 +1,3 @@
-#!/usr/bin/env python3
-#
-# CPU simulator for COMP2120
-#
-#######################################
-# Name : Ritvik Singh                 #
-# UID : 3035553044                    #
-#######################################
-
 import array as arr
 import sys
 opcode = ["ADD", "SUB", "NOT", "AND", "OR", "MOV", "LD", "ST", "B", "HLT"]
@@ -17,12 +8,11 @@ RAM_SIZE = 1024
 RF_SIZE = 32
 
 
-
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
 
-def puthex(val):
+def get_hex(val):
     return '{0:0{1}x}'.format(val, 8)
 
 
@@ -88,28 +78,28 @@ def reset():
 def incPC():
     Register["PC"] += 4
     if (debug):
-        eprint("PC is increased by 4 (", puthex(Register["PC"]), ")")
+        eprint("PC is increased by 4 (", get_hex(Register["PC"]), ")")
 
 
 def do_move_via_S1(src, dst):
     Register[dst] = Register[src]
     if (debug):
         eprint("Move via S1: ", dst, "<-", src,
-               " (", puthex(Register[src]), ")")
+               " (", get_hex(Register[src]), ")")
 
 
 def do_move_via_S2(src, dst):
     Register[dst] = Register[src]
     if (debug):
         eprint("Move via S2: ", dst, "<-", src,
-               " (", puthex(Register[src]), ")")
+               " (", get_hex(Register[src]), ")")
 
 
 def do_move_via_D(src, dst):
     Register[dst] = Register[src]
     if (debug):
         eprint("Move via D: ", dst, "<-", src,
-               " (", puthex(Register[src]), ")")
+               " (", get_hex(Register[src]), ")")
 
 
 def do_read_RF_port1():
@@ -117,7 +107,7 @@ def do_read_RF_port1():
     Register["RFOUT1"] = RF[reg]
     if (debug):
         eprint("Read RF Port 1 -- R", reg,
-               " (", puthex(Register["RFOUT1"]), ")")
+               " (", get_hex(Register["RFOUT1"]), ")")
 
 
 def do_read_RF_port2():
@@ -125,14 +115,14 @@ def do_read_RF_port2():
     Register["RFOUT2"] = RF[reg]
     if (debug):
         eprint("Read RF Port 2 -- R", reg,
-               " (", puthex(Register["RFOUT2"]), ")")
+               " (", get_hex(Register["RFOUT2"]), ")")
 
 
 def do_write_RF():
     reg = Register["IR"] & 0xFF
     RF[reg] = Register["RFIN"]
     if (debug):
-        eprint("Write RF -- R", reg, " (", puthex(Register["RFIN"]), ")")
+        eprint("Write RF -- R", reg, " (", get_hex(Register["RFIN"]), ")")
 
 
 def ALU_COPY():
@@ -179,7 +169,7 @@ def ALU_operation(opcode, setflag):
         "OP_SUB": ALU_SUB,
         "OP_AND": ALU_AND,
         "OP_OR": ALU_OR,
-        "OP_NOT": ALU_NOT
+        "OP_NOT": ALU_NOT,
     }
     func = switcher.get(opcode)
     func()
@@ -196,16 +186,16 @@ def do_read_memory():
     addr = Register["MAR"]//4
     Register["MBR"] = mem[addr]
     if (debug):
-        eprint("Read Memory at ", puthex(
-            Register["MAR"]), " (", puthex(Register["MBR"]), ")")
+        eprint("Read Memory at ", get_hex(
+            Register["MAR"]), " (", get_hex(Register["MBR"]), ")")
 
 
 def do_write_memory():
     addr = Register["MAR"]//4
     mem[addr] = Register["MBR"]
     if (debug):
-        eprint("Write Memory at ", puthex(
-            Register["MAR"]), " (", puthex(Register["MBR"]), ")")
+        eprint("Write Memory at ", get_hex(
+            Register["MAR"]), " (", get_hex(Register["MBR"]), ")")
 
 
 def fetch():
@@ -217,8 +207,8 @@ def fetch():
     addr = Register["MAR"]//4
     Register["IR"] = mem[addr]
     if (debug):
-        eprint("Read Instruction at ", puthex(
-            Register["MAR"]), " (", puthex(Register["IR"]), ")")
+        eprint("Read Instruction at ", get_hex(
+            Register["MAR"]), " (", get_hex(Register["IR"]), ")")
     incPC()
 
 
@@ -242,7 +232,7 @@ def set_ADD():
     Signal["ALU_func"] = "OP_ADD"
     Signal["move_via_S1"] = 1
     Signal["move_via_S2"] = 1
-    Signal["move_via_D"] = 1 # TODO 改名D-BUS会不会好点，不然容易和ALU的ABC混淆
+    Signal["move_via_D"] = 1  # TODO 改名D-BUS会不会好点，不然容易和ALU的ABC混淆
     Signal["read_memory"] = 0
     Signal["write_memory"] = 0
     Signal["dohalt"] = 0
@@ -508,13 +498,13 @@ def read_program(fn):
 def dump_memory():
     eprint("Content of Memory:")
     for x in range(0, nword):
-        eprint(puthex(mem[x]))
+        eprint(get_hex(mem[x]))
 
 
 def dump_register(n):
     eprint("Content of the first ", n, " registers:")
     for x in range(0, n):
-        eprint(puthex(RF[x]))
+        eprint(get_hex(RF[x]))
 
 
 def disassemble():
@@ -530,9 +520,9 @@ def disassemble():
         else:
             eprint(opcode[op], " R", s1, ", R", d)
     elif (op == 6):  # ld
-        eprint(opcode[op], puthex(addr), ", R", d)
+        eprint(opcode[op], get_hex(addr), ", R", d)
     elif (op == 7):  # st
-        eprint(opcode[op], " R", s1, ", ", puthex(addr))
+        eprint(opcode[op], " R", s1, ", ", get_hex(addr))
     elif (op == 8):  # br
         condition_code = (IR >> 16) & 0xFF
         if (condition_code == 0):
@@ -541,7 +531,7 @@ def disassemble():
             opcodebr = "BZ"
         else:
             opcodebr = "BNZ"
-        eprint(opcodebr, puthex(addr))
+        eprint(opcodebr, get_hex(addr))
     else:
         eprint(opcode[op])
 
@@ -576,11 +566,11 @@ def main():
     reset()
     while(not Signal["dohalt"]):
         if (debug):
-            eprint("Executing PC at ", puthex(Register["PC"]))
+            eprint("Executing PC at ", get_hex(Register["PC"]))
         fetch()
         decode()
         if (debug):
-            eprint("IR = ", puthex(Register["IR"]))
+            eprint("IR = ", get_hex(Register["IR"]))
             disassemble()
         execute()
         if (debug):
