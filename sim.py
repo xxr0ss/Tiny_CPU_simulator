@@ -2,7 +2,7 @@ import array as arr
 import sys
 
 # TODO add bit shift operation
-opcode = ["ADD", "SUB", "NOT", "AND", "OR", "MOV", "LD", "ST", "B", "HLT"]
+opcode = ["ADD", "SUB", "NOT", "AND", "OR", "MOV", "LD", "ST", "B", "HLT", "XOR"]
 
 DO_NOT_SET_FLAG = 0
 SET_FLAG = 1
@@ -165,6 +165,12 @@ def ALU_NOT():
         eprint("ALU (NOT)")
 
 
+def ALU_XOR():
+    Register["C"] = Register["A"] ^ Register["B"]
+    if verbose:
+        eprint("ALU (XOR)")
+
+
 def ALU_operation(opcode, setflag):
     # TODO key考虑换成数字
     switcher = {
@@ -174,6 +180,7 @@ def ALU_operation(opcode, setflag):
         "OP_AND": ALU_AND,
         "OP_OR": ALU_OR,
         "OP_NOT": ALU_NOT,
+        "OP_XOR": ALU_XOR,
     }
     func = switcher.get(opcode)
     func()
@@ -418,6 +425,27 @@ def set_BR():
     Signal["dohalt"] = 0
 
 
+def set_XOR():
+    Signal["calc_addr"] = 0
+    Signal["branch"] = 0
+    Signal["read_RF_port_1"] = 1
+    Signal["read_RF_port_2"] = 1
+    Signal["write_RF"] = 1
+    Signal["src_of_S1"] = "RFOUT1"
+    Signal["dst_of_S1"] = "A"
+    Signal["src_of_S2"] = "RFOUT2"
+    Signal["dst_of_S2"] = "B"
+    Signal["src_of_D"] = "C"
+    Signal["dst_of_D"] = "RFIN"
+    Signal["doalu"] = 1
+    Signal["ALU_func"] = "OP_XOR"
+    Signal["move_via_S1"] = 1
+    Signal["move_via_S2"] = 1
+    Signal["move_via_D"] = 1
+    Signal["read_memory"] = 0
+    Signal["write_memory"] = 0
+    Signal["dohalt"] = 0
+
 def decode():
     opcode = Register["IR"] >> 24
     switcher = {
@@ -431,6 +459,7 @@ def decode():
         7: set_ST,
         8: set_BR,
         9: set_HALT,
+        10: set_XOR,
     }
     func = switcher.get(opcode)
     func()
