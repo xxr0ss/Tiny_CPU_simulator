@@ -1,5 +1,4 @@
 import array as arr
-import sys
 
 # TODO add bit shift operation
 opcode = ["ADD", "SUB", "NOT", "AND", "OR", "MOV", "LD", "ST", "B", "HLT"]
@@ -11,13 +10,6 @@ RF_SIZE = 32
 
 verbose = False
 debug = False
-
-def eprint(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
-
-
-def get_hex(val):
-    return '{0:0{1}x}'.format(val, 8)
 
 
 def init_memory():
@@ -81,88 +73,56 @@ def reset():
 
 def incPC():
     Register["PC"] += 4
-    if verbose:
-        eprint("PC is increased by 4 (", get_hex(Register["PC"]), ")")
 
 
 def do_move_via_S1(src, dst):
     Register[dst] = Register[src]
-    if verbose:
-        eprint("Move via S1: ", dst, "<-", src,
-               " (", get_hex(Register[src]), ")")
 
 
 def do_move_via_S2(src, dst):
     Register[dst] = Register[src]
-    if verbose:
-        eprint("Move via S2: ", dst, "<-", src,
-               " (", get_hex(Register[src]), ")")
 
 
 def do_move_via_D(src, dst):
     Register[dst] = Register[src]
-    if verbose:
-        eprint("Move via D: ", dst, "<-", src,
-               " (", get_hex(Register[src]), ")")
 
 
 def do_read_RF_port1():
     reg = (Register["IR"] >> 16) & 0xFF
     Register["RFOUT1"] = RF[reg]
-    if verbose:
-        eprint("Read RF Port 1 -- R", reg,
-               " (", get_hex(Register["RFOUT1"]), ")")
 
 
 def do_read_RF_port2():
     reg = (Register["IR"] >> 8) & 0xFF
     Register["RFOUT2"] = RF[reg]
-    if verbose:
-        eprint("Read RF Port 2 -- R", reg,
-               " (", get_hex(Register["RFOUT2"]), ")")
 
 
 def do_write_RF():
     reg = Register["IR"] & 0xFF
     RF[reg] = Register["RFIN"]
-    if verbose:
-        eprint("Write RF -- R", reg, " (", get_hex(Register["RFIN"]), ")")
 
 
 def ALU_COPY():
     Register["C"] = Register["A"]
-    if verbose:
-        eprint("ALU (COPY)")
-
 
 def ALU_ADD():
     Register["C"] = (Register["A"] + Register["B"]) & 0xFFFFFFFF
-    if verbose:
-        eprint("ALU (ADD)")
 
 
 def ALU_SUB():
     Register["C"] = (Register["A"] - Register["B"]) & 0xFFFFFFFF
-    if verbose:
-        eprint("ALU (SUB)")
 
 
 def ALU_AND():
     Register["C"] = Register["A"] & Register["B"]
-    if verbose:
-        eprint("ALU (AND)")
 
 
 def ALU_OR():
     Register["C"] = Register["A"] | Register["B"]
-    if verbose:
-        eprint("ALU (OR)")
 
 
 def ALU_NOT():
     Register["C"] = (Register["A"] ^ 0xFFFFFFFF) & 0xFFFFFFFF
-    if verbose:
-        eprint("ALU (NOT)")
 
 
 def ALU_operation(opcode, setflag):
@@ -182,37 +142,24 @@ def ALU_operation(opcode, setflag):
             Register["ZERO_FLAG"] = 1
         else:
             Register["ZERO_FLAG"] = 0
-        if verbose:
-            eprint("Zero Flag Set to ", Register["ZERO_FLAG"])
 
 
 def do_read_memory():
     addr = Register["MAR"]//4
     Register["MBR"] = mem[addr]
-    if verbose:
-        eprint("Read Memory at ", get_hex(
-            Register["MAR"]), " (", get_hex(Register["MBR"]), ")")
 
 
 def do_write_memory():
     addr = Register["MAR"]//4
     mem[addr] = Register["MBR"]
-    if verbose:
-        eprint("Write Memory at ", get_hex(
-            Register["MAR"]), " (", get_hex(Register["MBR"]), ")")
 
 
 def fetch():
-    if verbose:
-        eprint("[Instruction Fetch]")
     do_move_via_S1("PC", "A")
     ALU_operation("OP_COPY", DO_NOT_SET_FLAG)
     do_move_via_D("C", "MAR")
     addr = Register["MAR"]//4
     Register["IR"] = mem[addr]
-    if verbose:
-        eprint("Read Instruction at ", get_hex(
-            Register["MAR"]), " (", get_hex(Register["IR"]), ")")
     incPC()
 
 
@@ -434,13 +381,9 @@ def decode():
     }
     func = switcher.get(opcode)
     func()
-    if verbose:
-        eprint("[Instruction Decode]")
 
 
 def execute():
-    if verbose:
-        eprint("[Instruction Execute]")
     if (Signal["dohalt"]):
         return
     if (Signal["calc_addr"]):
@@ -497,7 +440,7 @@ def read_program(fn):
                 i = i + 1
             nword = i
     except IOError:
-        eprint("Cannot read file ", fn)
+        print("Cannot read file ", fn)
         exit()
 
 
@@ -512,66 +455,12 @@ def read_memory(size=RAM_SIZE):
     return mem[:min(size, RAM_SIZE)]
 
 
-def dump_memory():
-    eprint("Content of Memory:")
-    for x in range(0, nword):
-        eprint(get_hex(mem[x]))
-
-
-def dump_register(n):
-    eprint("Content of the first ", n, " registers:")
-    for x in range(0, n):
-        eprint(get_hex(RF[x]))
-
-
-def disassemble():
-    addr = mem[Register["PC"]//4]
-    IR = Register["IR"]
-    op = IR >> 24
-    s1 = (IR >> 16) & 0xFF
-    s2 = (IR >> 8) & 0xFF
-    d = IR & 0xFF
-    if (op < 6):  # ALU operations
-        if ((op != 2) and (op != 5)):
-            eprint(opcode[op], " R", s1, ", R", s2, ", R", d)
-        else:
-            eprint(opcode[op], " R", s1, ", R", d)
-    elif (op == 6):  # ld
-        eprint(opcode[op], get_hex(addr), ", R", d)
-    elif (op == 7):  # st
-        eprint(opcode[op], " R", s1, ", ", get_hex(addr))
-    elif (op == 8):  # br
-        condition_code = (IR >> 16) & 0xFF
-        if (condition_code == 0):
-            opcodebr = "BR"
-        elif (condition_code == 1):
-            opcodebr = "BZ"
-        else:
-            opcodebr = "BNZ"
-        eprint(opcodebr, get_hex(addr))
-    else:
-        eprint(opcode[op])
-
-
 def run(program):
     init()
     read_program(program)
-    dump_memory()
+
     reset()
     while(not Signal["dohalt"]):
-        if verbose:
-            eprint("Executing PC at ", get_hex(Register["PC"]))
         fetch()
         decode()
-        if verbose:
-            eprint("IR = ", get_hex(Register["IR"]))
-            disassemble()
         execute()
-        if verbose:
-            dump_register(14)
-            if debug:
-                input("Press Enter to Continue")
-            print()
-    eprint("Final Result:")
-    dump_register(14)
-    dump_memory()
