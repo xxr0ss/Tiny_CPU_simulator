@@ -113,7 +113,7 @@ def do_move_via_D(src, dst):
 
 
 def do_read_RF_port1():
-    reg = (Register["IR"]//65536) % 256
+    reg = (Register["IR"] >> 16) & 0xFF
     Register["RFOUT1"] = RF[reg]
     if (debug):
         eprint("Read RF Port 1 -- R", reg,
@@ -121,7 +121,7 @@ def do_read_RF_port1():
 
 
 def do_read_RF_port2():
-    reg = (Register["IR"] % 65536)//256
+    reg = (Register["IR"] >> 8) & 0xFF
     Register["RFOUT2"] = RF[reg]
     if (debug):
         eprint("Read RF Port 2 -- R", reg,
@@ -129,7 +129,7 @@ def do_read_RF_port2():
 
 
 def do_write_RF():
-    reg = Register["IR"] % 256
+    reg = Register["IR"] & 0xFF
     RF[reg] = Register["RFIN"]
     if (debug):
         eprint("Write RF -- R", reg, " (", puthex(Register["RFIN"]), ")")
@@ -166,12 +166,13 @@ def ALU_OR():
 
 
 def ALU_NOT():
-    Register["C"] = ~Register["A"]
+    Register["C"] = Register["A"] ^ 0xFFFFFFFF
     if (debug):
         eprint("ALU (NOT)")
 
 
 def ALU_operation(opcode, setflag):
+    # TODO key考虑换成数字
     switcher = {
         "OP_COPY": ALU_COPY,
         "OP_ADD": ALU_ADD,
@@ -209,9 +210,7 @@ def do_write_memory():
 
 def fetch():
     if (debug):
-        eprint("-------------------------------------------")
-        eprint("Instruction Fetch")
-        eprint("-------------------------------------------")
+        eprint("[Instruction Fetch]")
     do_move_via_S1("PC", "A")
     ALU_operation("OP_COPY", DO_NOT_SET_FLAG)
     do_move_via_D("C", "MAR")
@@ -243,14 +242,13 @@ def set_ADD():
     Signal["ALU_func"] = "OP_ADD"
     Signal["move_via_S1"] = 1
     Signal["move_via_S2"] = 1
-    Signal["move_via_D"] = 1
+    Signal["move_via_D"] = 1 # TODO 改名D-BUS会不会好点，不然容易和ALU的ABC混淆
     Signal["read_memory"] = 0
     Signal["write_memory"] = 0
     Signal["dohalt"] = 0
 
 
 def set_SUB():
-    # Fill in the code for SUB instruction here
     Signal["calc_addr"] = 0
     Signal["branch"] = 0
     Signal["read_RF_port_1"] = 1
@@ -403,8 +401,6 @@ def set_ST():
     Signal["write_memory"] = 1
     Signal["dohalt"] = 0
 
-# Fill in the code for ST instruction here.
-
 
 def set_BR():
     Signal["calc_addr"] = 1
@@ -429,7 +425,7 @@ def set_BR():
 
 
 def decode():
-    opcode = Register["IR"]//16777216  # get the leftmost byte
+    opcode = Register["IR"] >> 24
     switcher = {
         0: set_ADD,
         1: set_SUB,
@@ -445,16 +441,12 @@ def decode():
     func = switcher.get(opcode)
     func()
     if (debug):
-        eprint("-------------------------------------------")
-        eprint("Instruction Decode")
-        eprint("-------------------------------------------")
+        eprint("[Instruction Decode]")
 
 
 def execute():
     if (debug):
-        eprint("-------------------------------------------")
-        eprint("Instruction Execute")
-        eprint("-------------------------------------------")
+        eprint("[Instruction Execute]")
     if (Signal["dohalt"]):
         return
     if (Signal["calc_addr"]):
@@ -485,7 +477,7 @@ def execute():
     if (Signal["write_memory"]):
         do_write_memory()
     if (Signal["branch"]):
-        condition_code = Register["IR"]//65536 % 256
+        condition_code = (Register["IR"] >> 16) & 0xFF
         if (condition_code == 0):  # unconditional branch
             branch_taken = 1
         elif (condition_code == 1):  # branch if zero
@@ -528,10 +520,10 @@ def dump_register(n):
 def disassemble():
     addr = mem[Register["PC"]//4]
     IR = Register["IR"]
-    op = IR//16777216
-    s1 = (IR//65536) % 256
-    s2 = (IR % 65536)//256
-    d = IR % 256
+    op = IR >> 24
+    s1 = (IR >> 16) & 0xFF
+    s2 = (IR >> 8) & 0xFF
+    d = IR & 0xFF
     if (op < 6):  # ALU operations
         if ((op != 2) and (op != 5)):
             eprint(opcode[op], " R", s1, ", R", s2, ", R", d)
@@ -542,7 +534,7 @@ def disassemble():
     elif (op == 7):  # st
         eprint(opcode[op], " R", s1, ", ", puthex(addr))
     elif (op == 8):  # br
-        condition_code = (IR//65536) % 256
+        condition_code = (IR >> 16) & 0xFF
         if (condition_code == 0):
             opcodebr = "BR"
         elif (condition_code == 1):
@@ -593,7 +585,8 @@ def main():
         execute()
         if (debug):
             dump_register(14)
-            input("Press Enter to Continue")
+            # input("Press Enter to Continue")
+            print()
     eprint("Final Result:")
     dump_register(14)
     dump_memory()
