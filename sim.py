@@ -51,7 +51,9 @@ def init():
         "ZERO_FLAG": 0
     }
     Signal = {
-        "calc_addr": 0,
+        "next_is_addr": 0,
+        "src_reg_is_addr": 0,
+        "dst_reg_is_addr": 0,
         "branch": 0,
         "read_RF_port_1": 0,
         "read_RF_port_2": 0,
@@ -106,24 +108,25 @@ def do_move_via_D(src, dst):
                " (", get_hex(Register[src]), ")")
 
 
-def do_read_RF_port1():
-    reg = (Register["IR"] >> 16) & 0xFF
+def do_read_RF_port1(shift=16):
+    # default register number = 0x00FF0000 & IR
+    reg = (Register["IR"] >> shift) & 0xFF
     Register["RFOUT1"] = RF[reg]
     if verbose:
         eprint("Read RF Port 1 -- R", reg,
                " (", get_hex(Register["RFOUT1"]), ")")
 
 
-def do_read_RF_port2():
-    reg = (Register["IR"] >> 8) & 0xFF
+def do_read_RF_port2(shift=8):
+    reg = (Register["IR"] >> shift) & 0xFF
     Register["RFOUT2"] = RF[reg]
     if verbose:
         eprint("Read RF Port 2 -- R", reg,
                " (", get_hex(Register["RFOUT2"]), ")")
 
 
-def do_write_RF():
-    reg = Register["IR"] & 0xFF
+def do_write_RF(shift=0):
+    reg = (Register["IR"] >> shift) & 0xFF
     RF[reg] = Register["RFIN"]
     if verbose:
         eprint("Write RF -- R", reg, " (", get_hex(Register["RFIN"]), ")")
@@ -223,26 +226,10 @@ def do_write_memory():
             Register["MAR"]), " (", get_hex(Register["MBR"]), ")")
 
 
-def fetch():
-    if verbose:
-        eprint("[Instruction Fetch]")
-    do_move_via_S1("PC", "A")
-    ALU_operation("OP_COPY", DO_NOT_SET_FLAG)
-    do_move_via_D("C", "MAR")
-    addr = Register["MAR"]//4
-    Register["IR"] = mem[addr]
-    if verbose:
-        eprint("Read Instruction at ", get_hex(
-            Register["MAR"]), " (", get_hex(Register["IR"]), ")")
-    incPC()
-
-
-def set_HALT():
-    Signal["dohalt"] = 1
-
-
-def set_ADD():
-    Signal["calc_addr"] = 0
+def set_ADD(ctrl):
+    Signal["next_is_addr"] = 0
+    Signal["src_reg_is_addr"] = 0
+    Signal["dst_reg_is_addr"] = 0
     Signal["branch"] = 0
     Signal["read_RF_port_1"] = 1
     Signal["read_RF_port_2"] = 1
@@ -263,8 +250,10 @@ def set_ADD():
     Signal["dohalt"] = 0
 
 
-def set_SUB():
-    Signal["calc_addr"] = 0
+def set_SUB(ctrl):
+    Signal["next_is_addr"] = 0
+    Signal["src_reg_is_addr"] = 0
+    Signal["dst_reg_is_addr"] = 0
     Signal["branch"] = 0
     Signal["read_RF_port_1"] = 1
     Signal["read_RF_port_2"] = 1
@@ -285,8 +274,10 @@ def set_SUB():
     Signal["dohalt"] = 0
 
 
-def set_AND():
-    Signal["calc_addr"] = 0
+def set_AND(ctrl):
+    Signal["next_is_addr"] = 0
+    Signal["src_reg_is_addr"] = 0
+    Signal["dst_reg_is_addr"] = 0
     Signal["branch"] = 0
     Signal["read_RF_port_1"] = 1
     Signal["read_RF_port_2"] = 1
@@ -307,8 +298,10 @@ def set_AND():
     Signal["dohalt"] = 0
 
 
-def set_OR():
-    Signal["calc_addr"] = 0
+def set_OR(ctrl):
+    Signal["next_is_addr"] = 0
+    Signal["src_reg_is_addr"] = 0
+    Signal["dst_reg_is_addr"] = 0
     Signal["branch"] = 0
     Signal["read_RF_port_1"] = 1
     Signal["read_RF_port_2"] = 1
@@ -329,8 +322,10 @@ def set_OR():
     Signal["dohalt"] = 0
 
 
-def set_NOT():
-    Signal["calc_addr"] = 0
+def set_NOT(ctrl):
+    Signal["next_is_addr"] = 0
+    Signal["src_reg_is_addr"] = 0
+    Signal["dst_reg_is_addr"] = 0
     Signal["branch"] = 0
     Signal["read_RF_port_1"] = 1
     Signal["read_RF_port_2"] = 0
@@ -351,8 +346,10 @@ def set_NOT():
     Signal["dohalt"] = 0
 
 
-def set_MOVE():
-    Signal["calc_addr"] = 0
+def set_MOVE(ctrl):
+    Signal["next_is_addr"] = 0
+    Signal["src_reg_is_addr"] = 0
+    Signal["dst_reg_is_addr"] = 0
     Signal["branch"] = 0
     Signal["read_RF_port_1"] = 1
     Signal["read_RF_port_2"] = 0
@@ -373,8 +370,11 @@ def set_MOVE():
     Signal["dohalt"] = 0
 
 
-def set_LD():
-    Signal["calc_addr"] = 1
+def set_LD(ctrl):
+    # ctrl: 00 absolute address     80 register address
+    Signal["next_is_addr"] = 1 if ctrl == 0x00 else 0
+    Signal["src_reg_is_addr"] = 1 if ctrl == 0x80 else 0
+    Signal["dst_reg_is_addr"] = 0
     Signal["branch"] = 0
     Signal["read_RF_port_1"] = 0
     Signal["read_RF_port_2"] = 0
@@ -390,13 +390,15 @@ def set_LD():
     Signal["move_via_S1"] = 1
     Signal["move_via_S2"] = 0
     Signal["move_via_D"] = 1
-    Signal["read_memory"] = 1
+    Signal["read_memory"] = 1 if ctrl == 0x00 else 0
     Signal["write_memory"] = 0
     Signal["dohalt"] = 0
 
 
-def set_ST():
-    Signal["calc_addr"] = 1
+def set_ST(ctrl):
+    Signal["next_is_addr"] = 1 if ctrl == 0x00 else 0
+    Signal["src_reg_is_addr"] = 0
+    Signal["dst_reg_is_addr"] = 1 if ctrl == 0x80 else 0
     Signal["branch"] = 0
     Signal["read_RF_port_1"] = 1
     Signal["read_RF_port_2"] = 0
@@ -417,8 +419,10 @@ def set_ST():
     Signal["dohalt"] = 0
 
 
-def set_BR():
-    Signal["calc_addr"] = 1
+def set_BR(ctrl):
+    Signal["next_is_addr"] = 1
+    Signal["src_reg_is_addr"] = 0
+    Signal["dst_reg_is_addr"] = 0
     Signal["branch"] = 1
     Signal["read_RF_port_1"] = 0
     Signal["read_RF_port_2"] = 0
@@ -439,8 +443,10 @@ def set_BR():
     Signal["dohalt"] = 0
 
 
-def set_XOR():
-    Signal["calc_addr"] = 0
+def set_XOR(ctrl):
+    Signal["next_is_addr"] = 0
+    Signal["src_reg_is_addr"] = 0
+    Signal["dst_reg_is_addr"] = 0
     Signal["branch"] = 0
     Signal["read_RF_port_1"] = 1
     Signal["read_RF_port_2"] = 1
@@ -461,8 +467,10 @@ def set_XOR():
     Signal["dohalt"] = 0
 
 
-def set_SHL():
-    Signal["calc_addr"] = 0
+def set_SHL(ctrl):
+    Signal["next_is_addr"] = 0
+    Signal["src_reg_is_addr"] = 0
+    Signal["dst_reg_is_addr"] = 0
     Signal["branch"] = 0
     Signal["read_RF_port_1"] = 1
     Signal["read_RF_port_2"] = 1
@@ -483,8 +491,10 @@ def set_SHL():
     Signal["dohalt"] = 0
 
 
-def set_SHR():
-    Signal["calc_addr"] = 0
+def set_SHR(ctrl):
+    Signal["next_is_addr"] = 0
+    Signal["src_reg_is_addr"] = 0
+    Signal["dst_reg_is_addr"] = 0
     Signal["branch"] = 0
     Signal["read_RF_port_1"] = 1
     Signal["read_RF_port_2"] = 1
@@ -505,8 +515,27 @@ def set_SHR():
     Signal["dohalt"] = 0
 
 
+def set_HALT(ctrl):
+    Signal["dohalt"] = 1
+
+
+def fetch():
+    if verbose:
+        eprint("[Instruction Fetch]")
+    do_move_via_S1("PC", "A")
+    ALU_operation("OP_COPY", DO_NOT_SET_FLAG)
+    do_move_via_D("C", "MAR")
+    addr = Register["MAR"]//4
+    Register["IR"] = mem[addr]
+    if verbose:
+        eprint("Read Instruction at ", get_hex(
+            Register["MAR"]), " (", get_hex(Register["IR"]), ")")
+    incPC()
+
+
 def decode():
     opcode = Register["IR"] >> 24
+    ctrl = (Register["IR"] >> 8) & 0xFF
     switcher = {
         0: set_ADD,
         1: set_SUB,
@@ -523,7 +552,7 @@ def decode():
         12:set_HALT,
     }
     func = switcher.get(opcode)
-    func()
+    func(ctrl)
     if verbose:
         eprint("[Instruction Decode]")
 
@@ -533,7 +562,7 @@ def execute():
         eprint("[Instruction Execute]")
     if (Signal["dohalt"]):
         return
-    if (Signal["calc_addr"]):
+    if (Signal["next_is_addr"]):
         do_move_via_S1("PC", "A")
         ALU_operation("OP_COPY", DO_NOT_SET_FLAG)
         do_move_via_D("C", "MAR")
@@ -542,6 +571,17 @@ def execute():
         ALU_operation("OP_COPY", DO_NOT_SET_FLAG)
         do_move_via_D("C", "MAR")
         incPC()
+    if (Signal["src_reg_is_addr"]):
+        do_read_RF_port1()
+        do_move_via_S1("RFOUT1", "A")
+        ALU_operation("OP_COPY", DO_NOT_SET_FLAG)
+        do_move_via_D("C", "MAR")
+        do_read_memory()
+    if (Signal["dst_reg_is_addr"]):
+        do_read_RF_port1(shift=0)
+        do_move_via_S1("RFOUT1", "A")
+        ALU_operation("OP_COPY", DO_NOT_SET_FLAG)
+        do_move_via_D("C", "MAR")
     if (Signal["read_memory"]):
         do_read_memory()
     if (Signal["read_RF_port_1"]):
@@ -582,10 +622,11 @@ def read_program(fn):
     i = 0
     try:
         with open(fn, "r") as f:
-            for x in f:
-                mem[i] = int(x, 16)
-                i = i + 1
-            nword = i
+            content = f.read()
+            content = content.replace('\n', '').replace(' ', '').strip()
+            for i in range(len(content) // 8):
+                mem[i] = int(content[i*8:i*8+8], 16)
+            nword = i + 1
     except IOError:
         eprint("Cannot read file ", fn)
         exit()
@@ -627,9 +668,9 @@ def disassemble():
         else:
             eprint(opcode[op], " R", s1, ", R", d)
     elif (op == 9):  # ld
-        eprint(opcode[op], get_hex(addr), ", R", d)
+        eprint(opcode[op], "R[{}]".format(s1) if s2 == 0x80 else get_hex(addr), ", R", d)
     elif (op == 10):  # st
-        eprint(opcode[op], " R", s1, ", ", get_hex(addr))
+        eprint(opcode[op], " R", s1, ", ", "R[{}]".format(d) if s2 == 0x80 else get_hex(addr))
     elif (op == 11):  # br
         condition_code = (IR >> 16) & 0xFF
         if (condition_code == 0):
