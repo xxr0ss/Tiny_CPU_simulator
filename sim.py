@@ -1,4 +1,5 @@
 import array as arr
+import sys
 
 # TODO add bit shift operation
 opcode = ["ADD", "SUB", "NOT", "AND", "OR", "MOV", "LD", "ST", "B", "HLT"]
@@ -441,7 +442,7 @@ def read_program(fn):
             nword = i
     except IOError:
         print("Cannot read file ", fn)
-        exit()
+        sys.exit()
 
 
 def set_memory(addr, value):
