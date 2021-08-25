@@ -2,7 +2,7 @@ import array as arr
 import sys
 
 # TODO add bit shift operation
-opcode = ["ADD", "SUB", "NOT", "AND", "OR", "MOV", "LD", "ST", "B", "HLT", "XOR"]
+opcode = ["ADD", "SUB", "NOT", "AND", "OR", "XOR", "MOV", "LD", "ST", "B", "HLT"]
 
 DO_NOT_SET_FLAG = 0
 SET_FLAG = 1
@@ -454,12 +454,12 @@ def decode():
         2: set_NOT,
         3: set_AND,
         4: set_OR,
-        5: set_MOVE,
-        6: set_LD,
-        7: set_ST,
-        8: set_BR,
-        9: set_HALT,
-        10: set_XOR,
+        5: set_XOR,
+        6: set_MOVE,
+        7: set_LD,
+        8: set_ST,
+        9: set_BR,
+        10:set_HALT,
     }
     func = switcher.get(opcode)
     func()
