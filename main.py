@@ -5,6 +5,7 @@ def usage():
     print("Usage: [python3] ./main.py [-d] progname")
 
 def main():
+    verbose = False
     debug = False
     argc = len(sys.argv)
     if (argc == 1):
@@ -15,14 +16,18 @@ def main():
             usage()
             exit()
         filename = sys.argv[2]
-        if (sys.argv[1][1] == 'd'):
-            debug = 1
+        if (sys.argv[1][1] == 'v'):
+            verbose = True
+        elif (sys.argv[1][1] == 'd'):
+            debug = True
+            verbose = True
         else:
             usage()
             exit()
     else:
-        debug = 0
+        verbose = 0
         filename = sys.argv[1]
+    sim.verbose = verbose
     sim.debug = debug
     sim.run(filename)
 
