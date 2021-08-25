@@ -1,5 +1,7 @@
 import array as arr
 import sys
+
+# TODO add bit shift operation
 opcode = ["ADD", "SUB", "NOT", "AND", "OR", "MOV", "LD", "ST", "B", "HLT"]
 
 DO_NOT_SET_FLAG = 0
@@ -7,6 +9,7 @@ SET_FLAG = 1
 RAM_SIZE = 1024
 RF_SIZE = 32
 
+debug = False
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
@@ -481,9 +484,11 @@ def execute():
 
 
 def read_program(fn):
+    """
+    read program from file
+    """
     global nword
     i = 0
-#  f = open(fn, "r")
     try:
         with open(fn, "r") as f:
             for x in f:
@@ -536,32 +541,9 @@ def disassemble():
         eprint(opcode[op])
 
 
-def usage():
-    eprint("Usage: [python3] ./sim.py [-d] progname")
-
-
-def main():
-    global debug
-    debug = 0
-    argc = len(sys.argv)
-    if (argc == 1):
-        usage()
-        exit()
-    if (sys.argv[1][0] == '-'):
-        if (argc == 2):
-            usage()
-            exit()
-        filename = sys.argv[2]
-        if (sys.argv[1][1] == 'd'):
-            debug = 1
-        else:
-            usage()
-            exit()
-    else:
-        debug = 0
-        filename = sys.argv[1]
+def run(program):
     init()
-    read_program(filename)
+    read_program(program)
     dump_memory()
     reset()
     while(not Signal["dohalt"]):
@@ -580,6 +562,3 @@ def main():
     eprint("Final Result:")
     dump_register(14)
     dump_memory()
-
-
-main()
