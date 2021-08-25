@@ -2,7 +2,7 @@ import array as arr
 import sys
 
 # TODO add bit shift operation
-opcode = ["ADD", "SUB", "NOT", "AND", "OR", "XOR", "MOV", "LD", "ST", "B", "HLT"]
+opcode = ["ADD", "SUB", "NOT", "AND", "OR", "XOR", "SHL", "SHR", "MOV", "LD", "ST", "B", "HLT"]
 
 DO_NOT_SET_FLAG = 0
 SET_FLAG = 1
@@ -171,6 +171,18 @@ def ALU_XOR():
         eprint("ALU (XOR)")
 
 
+def ALU_SHL():
+    Register["C"] = (Register["A"] << Register["B"]) & 0xFFFFFFFF
+    if verbose:
+        eprint("ALU (SHL)")
+
+
+def ALU_SHR():
+    Register["C"] = (Register["A"] >> Register["B"])
+    if verbose:
+        eprint("ALU (SHR)")
+
+
 def ALU_operation(opcode, setflag):
     # TODO key考虑换成数字
     switcher = {
@@ -181,6 +193,8 @@ def ALU_operation(opcode, setflag):
         "OP_OR": ALU_OR,
         "OP_NOT": ALU_NOT,
         "OP_XOR": ALU_XOR,
+        "OP_SHL": ALU_SHL,
+        "OP_SHR": ALU_SHR
     }
     func = switcher.get(opcode)
     func()
@@ -446,6 +460,51 @@ def set_XOR():
     Signal["write_memory"] = 0
     Signal["dohalt"] = 0
 
+
+def set_SHL():
+    Signal["calc_addr"] = 0
+    Signal["branch"] = 0
+    Signal["read_RF_port_1"] = 1
+    Signal["read_RF_port_2"] = 1
+    Signal["write_RF"] = 1
+    Signal["src_of_S1"] = "RFOUT1"
+    Signal["dst_of_S1"] = "A"
+    Signal["src_of_S2"] = "RFOUT2"
+    Signal["dst_of_S2"] = "B"
+    Signal["src_of_D"] = "C"
+    Signal["dst_of_D"] = "RFIN"
+    Signal["doalu"] = 1
+    Signal["ALU_func"] = "OP_SHL"
+    Signal["move_via_S1"] = 1
+    Signal["move_via_S2"] = 1
+    Signal["move_via_D"] = 1
+    Signal["read_memory"] = 0
+    Signal["write_memory"] = 0
+    Signal["dohalt"] = 0
+
+
+def set_SHR():
+    Signal["calc_addr"] = 0
+    Signal["branch"] = 0
+    Signal["read_RF_port_1"] = 1
+    Signal["read_RF_port_2"] = 1
+    Signal["write_RF"] = 1
+    Signal["src_of_S1"] = "RFOUT1"
+    Signal["dst_of_S1"] = "A"
+    Signal["src_of_S2"] = "RFOUT2"
+    Signal["dst_of_S2"] = "B"
+    Signal["src_of_D"] = "C"
+    Signal["dst_of_D"] = "RFIN"
+    Signal["doalu"] = 1
+    Signal["ALU_func"] = "OP_SHR"
+    Signal["move_via_S1"] = 1
+    Signal["move_via_S2"] = 1
+    Signal["move_via_D"] = 1
+    Signal["read_memory"] = 0
+    Signal["write_memory"] = 0
+    Signal["dohalt"] = 0
+
+
 def decode():
     opcode = Register["IR"] >> 24
     switcher = {
@@ -455,11 +514,13 @@ def decode():
         3: set_AND,
         4: set_OR,
         5: set_XOR,
-        6: set_MOVE,
-        7: set_LD,
-        8: set_ST,
-        9: set_BR,
-        10:set_HALT,
+        6: set_SHL,
+        7: set_SHR,
+        8: set_MOVE,
+        9: set_LD,
+        10:set_ST,
+        11:set_BR,
+        12:set_HALT,
     }
     func = switcher.get(opcode)
     func()
@@ -560,16 +621,16 @@ def disassemble():
     s1 = (IR >> 16) & 0xFF
     s2 = (IR >> 8) & 0xFF
     d = IR & 0xFF
-    if (op < 6):  # ALU operations
-        if ((op != 2) and (op != 5)):
+    if (op < 9):  # ALU operations
+        if ((op != 2) and (op != 8)):
             eprint(opcode[op], " R", s1, ", R", s2, ", R", d)
         else:
             eprint(opcode[op], " R", s1, ", R", d)
-    elif (op == 6):  # ld
+    elif (op == 9):  # ld
         eprint(opcode[op], get_hex(addr), ", R", d)
-    elif (op == 7):  # st
+    elif (op == 10):  # st
         eprint(opcode[op], " R", s1, ", ", get_hex(addr))
-    elif (op == 8):  # br
+    elif (op == 11):  # br
         condition_code = (IR >> 16) & 0xFF
         if (condition_code == 0):
             opcodebr = "BR"
