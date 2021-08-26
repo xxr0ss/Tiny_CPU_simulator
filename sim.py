@@ -652,7 +652,9 @@ def dump_memory():
 def dump_register(n):
     eprint("Content of the first ", n, " registers:")
     for x in range(0, n):
-        eprint(get_hex(RF[x]))
+        eprint(get_hex(RF[x]), end=' ')
+        if (x + 1) % 7 == 0:
+            eprint('\n', end='')
 
 
 def disassemble():
