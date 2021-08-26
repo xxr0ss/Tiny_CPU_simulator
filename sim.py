@@ -639,8 +639,8 @@ def set_memory(addr, value):
     return False
 
 
-def read_memory(size=RAM_SIZE):
-    return mem[:min(size, RAM_SIZE)]
+def peak_memory(start=0, size=RAM_SIZE):
+    return mem[start:min(size, RAM_SIZE)]
 
 
 def dump_memory():
