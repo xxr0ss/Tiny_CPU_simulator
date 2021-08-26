@@ -1,6 +1,6 @@
 import array as arr
 import sys
-
+from rich import print as rprint
 # TODO add bit shift operation
 opcode = ["ADD", "SUB", "NOT", "AND", "OR", "XOR", "SHL", "SHR", "MOV", "LD", "ST", "B", "HLT"]
 
@@ -526,6 +526,7 @@ def fetch():
     ALU_operation("OP_COPY", DO_NOT_SET_FLAG)
     do_move_via_D("C", "MAR")
     addr = Register["MAR"]//4
+    rprint('PC: [blue]%d[/blue]' % addr)
     Register["IR"] = mem[addr]
     if verbose:
         eprint("Read Instruction at ", get_hex(
@@ -554,7 +555,7 @@ def decode():
     func = switcher.get(opcode)
     func(ctrl)
     if verbose:
-        eprint("[Instruction Decode]")
+        rprint("[red][Instruction Decode][/red]")
 
 
 def execute():
